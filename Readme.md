@@ -20,8 +20,6 @@ The protocol looks like this
 
 ### Commands To Run The Application
 
-[](https://github.com/vmskonakanchi/udp-file-sync#commands-to-run-the-application)
-
 * To run the server
 
 ```shell
