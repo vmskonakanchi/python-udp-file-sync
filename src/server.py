@@ -1,7 +1,8 @@
-import os,sys,socket,threading
+import os
+import sys
+import socket
 
-MAX_CLIENTS = 5
-MAX_BUFFER_SIZE = 1024 * 4 # 4KB
+MAX_BUFFER_SIZE = 1024 * 4  # 4KB
 
 if len(sys.argv) != 3:
     print(f'Usage : python {sys.argv[0]} <folder_name> <port>')
@@ -11,32 +12,45 @@ host = '127.0.0.1'
 folder_name = sys.argv[1]
 port = int(sys.argv[2])
 
-# set up a udp server
+# Set up a UDP server
 server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 server.bind((host, port))
+# Set a timeout for the server socket
+server.settimeout(1)  # 1 second
 
-# creating a folder if it doesn't exist
+# Create a folder if it doesn't exist
 if not os.path.exists(folder_name):
     os.makedirs(folder_name)
 
 print(f'File Sync Server started at {host}:{port}')
 
-# listen for incoming connections
+# Listen for incoming connections
+try:
+    while True:
+        try:
+            data, addr = server.recvfrom(MAX_BUFFER_SIZE)
+            data = data.decode()
 
-while True:
-    try:
-        data, addr =  server.recvfrom(MAX_BUFFER_SIZE)
-        print(f'Connection from {addr} has been established!')
-        data = data.decode()
-        file_name, offset , content = data.split(' ')
-        offset = int(offset)
-        file_path = os.path.join(folder_name, file_name)
-        with open(file_path, 'ab') as f:
-            f.seek(offset)
-            f.write(content)
-            print(f'Wrote {len(content)} bytes of data to {file_path}')
-        server.sendto('Data received successfully'.encode(), addr)
-    except KeyboardInterrupt as k:
-        print('File Sync Server closed! , Bye Bye!')
-        server.close()
-        sys.exit(0)
+            file_name, content = data.split('-')
+            file_path = os.path.join(folder_name, os.path.basename(file_name))
+
+            if not content:
+                print('No content received!')
+                continue
+
+            if not os.path.exists(file_path):
+                open(file_path, 'w').close()
+            
+            with open(file_path, 'wb') as file:
+                file.write(content.encode())
+
+            server.sendto('OK'.encode(), addr)
+        except socket.timeout:
+            pass
+        except KeyboardInterrupt:
+            print('File Sync Server closed! Bye Bye!')
+            break
+except Exception as e:
+    print('An error occurred:', str(e))
+finally:
+    server.close()
